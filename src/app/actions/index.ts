@@ -26,6 +26,7 @@ export async function doCredentialLogin(formData: LoginFormData) {
     revalidatePath('/')
     return response
   } catch (err) {
+    console.error('doCredentialLogin error', err)
     throw err
   }
 }

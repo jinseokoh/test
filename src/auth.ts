@@ -28,34 +28,34 @@ function getTokenExpiration(token: string): number | undefined {
  */
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`;
+    const res = await fetch(
+      url,
       {
+        method: 'POST',
+        body: null,
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token.refreshToken}`,
         },
       }
     )
 
-    const tokens = await response.json()
 
-    if (!response.ok) {
-      throw tokens
+    if (!res.ok) {
+      throw new Error('refreshAccessToken !!!!! failed');
     }
 
-    const accessTokenExpires = tokens.accessToken
-      ? getTokenExpiration(tokens.accessToken)
-      : undefined
+    const data = await res.json()
+    console.log(`💋 tokens`, JSON.stringify(data))
 
     return {
       ...token,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken ?? token.refreshToken,
-      accessTokenExpires,
-      error: undefined,
+      accessToken: data.accessToken,
+      // asdfaarefreshToken: data.refreshToken ?? token.refreshToken,
     }
   } catch (error) {
-    console.error('Error refreshing access token:', error)
+    console.error('refreshingAccessToken:', error)
     return {
       ...token,
       error: 'RefreshAccessTokenError',
@@ -88,8 +88,9 @@ export const {
         }
 
         try {
+          const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
           const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+            url,
             {
               method: 'POST',
               body: JSON.stringify({
@@ -105,8 +106,8 @@ export const {
             return null
           }
 
-          const parsedResponse = await res.json()
-          const result = parsedResponse?.result
+          const data = await res.json()
+          const result = data?.result
 
           if (!result?.accessToken) {
             return null
@@ -123,9 +124,9 @@ export const {
             username: result.username || credentials.username,
             phone: result.user?.phone || '',
             accessTokenExpires,
-            name: result.user?.name || null, // Include required NextAuthUser fields
+            name: result.user?.name || null,
             email: result.user?.email || null,
-            image: result.user?.image || null,
+            image: result.user?.avatar || null,
           }
 
           return user
@@ -157,25 +158,36 @@ export const {
         token.accessTokenExpires &&
         Date.now() < Number(token.accessTokenExpires)
       ) {
+        const diff = token.accessTokenExpires - Date.now();
+        console.log(`👅 session`, JSON.stringify(token))
+        console.log(`👅 diff`, diff / 1000)
         return token
       }
 
       return refreshAccessToken(token)
     },
     session: async ({ session, token }) => {
-      session.accessToken = token.accessToken
-      session.error = token.error
-      session.user = {
-        id: token.id,
-        phone: token.phone,
-        role: token.role ?? '',
-        username: token.username ?? '',
-        name: token.name ?? null,
-        image: token.image ?? null,
-        email: token.email ?? '', // 👈 추가
-        emailVerified: null, // 👈 추가
-        accessToken: token.accessToken ?? '', // 👈 추가
-        refreshToken: token.refreshToken ?? '', // 👈 추가
+
+      console.log(`🦊👀 session`, JSON.stringify(session))
+      console.log(`🦊👀 token`, JSON.stringify(token))
+      if (token) {
+        session.accessToken = token.accessToken
+        session.accessTokenExpires = token.accessTokenExpires
+        session.error = token.error
+        session.user = {
+          id: token.id,
+          phone: token.phone,
+          role: token.role ?? '',
+          username: token.username ?? '',
+          name: token.name ?? null,
+          image: token.image ?? null,
+          email: token.email ?? '', // 👈 추가
+          emailVerified: null, // 👈 추가
+          accessToken: token.accessToken ?? '', // 👈 추가
+          refreshToken: token.refreshToken ?? '', // 👈 추가
+        }
+        console.log(`🦊 session`, JSON.stringify(session))
+
       }
       return session
     },

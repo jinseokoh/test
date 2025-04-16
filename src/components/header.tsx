@@ -29,7 +29,7 @@ export default function Header() {
         <div className="w-full max-w-4xl flex items-center justify-between">
           <div>
             <Link href="/" className="text-xl font-bold">
-              Auth App
+              숙훌링크
             </Link>
           </div>
 

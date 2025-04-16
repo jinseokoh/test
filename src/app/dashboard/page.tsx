@@ -60,10 +60,15 @@ export default async function DashboardPage() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Access Token Expires:</span>
-                <span className="font-medium">{new Date(session.expiresAt).toLocaleTimeString()}</span>
+                <span className="font-medium">{new Date(session.accessTokenExpires ?? '').toLocaleTimeString()}</span>
               </div>
             </div>
             <RefreshTokenButton />
+            {
+              session && <>{
+                JSON.stringify(session, null, 2)
+              }</>
+            }
           </CardContent>
         </Card>
       </div>
