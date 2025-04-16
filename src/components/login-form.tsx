@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { LoginFormData, loginFormSchema } from "@/schemas/login-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signIn } from "next-auth/react"
 import Link from "next/link"
@@ -11,24 +12,13 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
-
-const formSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
-  role: z.enum(["INSTRUCTOR", "PARENT", "MANAGER"], {
-    required_error: "Please select a role",
-  }),
-})
-
-type FormValues = z.infer<typeof formSchema>
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginFormSchema),
     defaultValues: {
       username: "",
       password: "",
@@ -36,28 +26,30 @@ export function LoginForm() {
     },
   })
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(formData: LoginFormData) {
     setIsLoading(true)
-
     try {
+      // Use NextAuth's signIn directly for better error handling
       const result = await signIn("credentials", {
-        username: values.username,
-        password: values.password,
-        role: values.role,
-        redirect: false, // 클라이언트 측 제어를 위해
+        username: formData.username,
+        password: formData.password,
+        role: formData.role,
+        redirect: false,
       });
+
       if (result?.error) {
-        toast.error("로그인 실패", {
-          description: result.error || "아이디 또는 비밀번호를 확인하세요",
+        toast.error("로그인 오류", {
+          description: "아이디 또는 비밀번호를 확인하세요",
         });
         return;
       }
 
-      router.push("/dashboard")
-      router.refresh()
+      // Success - redirect to dashboard
+      router.push("/dashboard");
+      router.refresh();
     } catch (error: unknown) {
-      toast.error("🦊 로그인 오류", {
-        description: error instanceof Error ? error.message : "Please try again later",
+      toast.error("로그인 오류", {
+        description: error instanceof Error ? error.message : "나중에 다시 시도해주세요",
       })
     } finally {
       setIsLoading(false)
@@ -120,15 +112,15 @@ export function LoginForm() {
           />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
+            {isLoading ? "로그인 중..." : "로그인"}
           </Button>
         </form>
       </Form>
 
       <div className="text-center text-sm">
-        Don&apos;t have an account?{" "}
+        계정이 없으신가요?{" "}
         <Link href="/register" className="underline">
-          Register
+          회원가입
         </Link>
       </div>
     </div>

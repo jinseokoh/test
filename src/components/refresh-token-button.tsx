@@ -17,12 +17,19 @@ export function RefreshTokenButton() {
 
     try {
       const url = `/api/auth/refresh`;
+      // const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`;
+      const refreshToken = session.refreshToken;
+
       const response = await fetch(url, {
-        method: "POST",
-        credentials: "include",
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${refreshToken}`,
+        },
+        // credentials: "include",
       });
       const data = await response.json();
-      console.log(">>>>>> Response data:", data);
+
       if (!response.ok) {
         throw new Error("Failed to refresh token")
       }

@@ -1,4 +1,3 @@
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { RefreshTokenButton } from '@/components/refresh-token-button'
 import {
   Card,
@@ -7,11 +6,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
+import { auth } from '../../auth'
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
 
   if (!session) {
     redirect("/login")

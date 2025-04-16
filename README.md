@@ -32,6 +32,15 @@ NEXTAUTH_SECRET='HdirGOjnpEAR6Oj6oh3hUJUYiZKOoNIDAOSL1LuQxio='
 NEXTAUTH_URL=http://localhost:3000
 ```
 
+## https://localhost:3000 제대로 설치하기
+
+```
+brew install mkcert
+brew install nss # Firefox 를 위해
+mkcert -install
+mkcert localhost # 프로젝트 root folder 에서 실행
+```
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

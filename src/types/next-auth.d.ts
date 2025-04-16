@@ -1,36 +1,47 @@
+// types/next-auth.d.ts
 import 'next-auth'
+import 'next-auth/jwt'
 
 declare module 'next-auth' {
-  interface User extends Omit<DefaultUser, 'id' | 'name' | 'image'> {
-    id: number
-    username: string
-    email: string | null
-    phone: string | null
-    avatar: string | null
-    role?: string // 추가
-    accessToken?: string // 추가
-    expiresAt?: number // 추가
+  interface Session {
+    accessToken?: string
+    error?: string
+    user: {
+      id: string
+      phone: string
+      role: string
+      username: string
+      name?: string | null
+      image?: string | null
+    }
   }
 
-  // getServerSession() 이나 getSession() 호출시 가져오는 payload 형식
-  interface Session {
-    user: {
-      id: number
-      username: string
-      role: string // role은 세션의 유저 정보에는 포함해야함
-    }
+  interface User {
+    id: string
+    phone: string
+    role: string
+    username: string
     accessToken: string
-    expiresAt: number
+    refreshToken: string
+    accessTokenExpires?: number
+    name?: string | null
+    email?: string | null
+    image?: string | null
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    id: number
-    sub: string
-    username: string
-    role: string // role은 페이로드 최상위에 있음
-    accessToken: string
-    expiresAt: number
+    id: string
+    phone: string
+    role?: string
+    username?: string
+    accessToken?: string
+    refreshToken?: string
+    accessTokenExpires?: number
+    name?: string | null
+    email?: string | null
+    image?: string | null
+    error?: string
   }
 }

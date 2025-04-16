@@ -1,14 +1,14 @@
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import Header from "@/components/header";
-import { cn } from "@/lib/utils";
-import { NavigationProvider } from "@/providers/navigation-provider";
-import NextAuthSessionProvider from "@/providers/next-auth-session-provider";
-import ReactQueryProvider from "@/providers/react-query-provider";
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
 import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
+import React from 'react';
 import { Toaster } from "sonner";
+import { auth } from "../auth";
+import Header from "../components/header";
+import { cn } from "../lib/utils";
+import { NavigationProvider } from "../providers/navigation-provider";
+import NextAuthSessionProvider from "../providers/next-auth-session-provider";
+import ReactQueryProvider from "../providers/react-query-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -70,7 +70,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession(authOptions)
+  const session = await auth()
 
   return (
     <html
