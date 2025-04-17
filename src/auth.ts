@@ -22,40 +22,35 @@ function getTokenExpiration(token: string): number | undefined {
   }
 }
 
-/**
- * Takes a token and returns a new token with updated `accessToken` and `accessTokenExpires`.
- * If an error occurs, returns the old token with an error property.
- */
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`;
-    const res = await fetch(
-      url,
-      {
-        method: 'POST',
-        body: null,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token.refreshToken}`,
-        },
-      }
-    )
-
-
+    console.log('🟠 Refreshing token with refreshToken:', token.refreshToken)
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`
+    const res = await fetch(url, {
+      method: 'POST',
+      body: null,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token.refreshToken}`,
+      },
+    })
     if (!res.ok) {
-      throw new Error('refreshAccessToken !!!!! failed');
+      throw new Error('refresh API failed')
     }
-
     const data = await res.json()
-    console.log(`💋 tokens`, JSON.stringify(data))
+    const result = data?.result;
+
+    const accessTokenExpires = getTokenExpiration(result.accessToken)
 
     return {
       ...token,
-      accessToken: data.accessToken,
-      // asdfaarefreshToken: data.refreshToken ?? token.refreshToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken ?? token.refreshToken,
+      accessTokenExpires,
+      error: undefined,
     }
   } catch (error) {
-    console.error('refreshingAccessToken:', error)
+    console.error('RefreshAccessTokenError:', error)
     return {
       ...token,
       error: 'RefreshAccessTokenError',
@@ -113,6 +108,7 @@ export const {
             return null
           }
 
+          console.log(`💋 `, JSON.stringify(result.accessToken, result.refreshToken))
           // Parse the expiration time from the token
           const accessTokenExpires = getTokenExpiration(result.accessToken)
 
@@ -122,8 +118,8 @@ export const {
             refreshToken: result.refreshToken,
             role: result.role || credentials.role,
             username: result.username || credentials.username,
-            phone: result.user?.phone || '',
             accessTokenExpires,
+            phone: result.user?.phone || '',
             name: result.user?.name || null,
             email: result.user?.email || null,
             image: result.user?.avatar || null,
@@ -139,37 +135,47 @@ export const {
   ],
   callbacks: {
     jwt: async ({ token, user }) => {
+      console.log(`🟢 jwt callback - Token is ${JSON.stringify(token)}`)
+      let accessTokenExpires: number | undefined
+
+      // 처음 로그인하는 경우 token을 내가 원하는 형태로 수정
       if (user) {
-        return {
+        console.log(`🟢 jwt callback - User is ${JSON.stringify(user)}`)
+
+        if (user.accessToken) {
+          accessTokenExpires = getTokenExpiration(user.accessToken)
+        }
+
+        const updatedToken = {
           ...token,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           role: user.role,
           id: user.id,
+          name: user.username,
           username: user.username,
           phone: user.phone,
-          accessTokenExpires: user.accessTokenExpires,
-          name: user.name,
           image: user.image,
+          accessTokenExpires: accessTokenExpires,
         } as JWT
+        console.log(`🟢 jwt callback returns ${JSON.stringify(updatedToken)}`)
+        return updatedToken
       }
 
+      // 토큰이 만료되었는지 확인
       if (
-        token.accessTokenExpires &&
-        Date.now() < Number(token.accessTokenExpires)
+        token.accessTokenExpires && Date.now() < Number(token.accessTokenExpires)
       ) {
-        const diff = token.accessTokenExpires - Date.now();
-        console.log(`👅 session`, JSON.stringify(token))
-        console.log(`👅 diff`, diff / 1000)
-        return token
+        console.log(`🟢 accessToken is not expired`, token)
+        return token;
       }
-
+      console.log(`🔴 accessToken is expired`, token)
       return refreshAccessToken(token)
     },
     session: async ({ session, token }) => {
 
-      console.log(`🦊👀 session`, JSON.stringify(session))
-      console.log(`🦊👀 token`, JSON.stringify(token))
+      console.log(`🟡 session`, JSON.stringify(session))
+      console.log(`🟡 token`, JSON.stringify(token))
       if (token) {
         session.accessToken = token.accessToken
         session.accessTokenExpires = token.accessTokenExpires
@@ -186,8 +192,7 @@ export const {
           accessToken: token.accessToken ?? '', // 👈 추가
           refreshToken: token.refreshToken ?? '', // 👈 추가
         }
-        console.log(`🦊 session`, JSON.stringify(session))
-
+        console.log(`🟡 session`, JSON.stringify(session))
       }
       return session
     },

@@ -12,7 +12,8 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       // Call our API route to handle server-side logout
-      await fetch("/api/auth/logout", {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/logout`;
+      await fetch(url, {
         method: "POST",
       })
 
@@ -38,8 +39,8 @@ export default function Header() {
               <>
                 {session ? (
                   <>
-                    <Link href="/dashboard">
-                      <Button variant="ghost">Dashboard</Button>
+                    <Link href="/users">
+                      <Button variant="ghost">사용자</Button>
                     </Link>
                     <Button onClick={handleLogout} variant="outline" size="sm">
                       <LogOut className="mr-2 h-4 w-4" />

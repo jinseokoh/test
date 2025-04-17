@@ -16,9 +16,8 @@ export function RefreshTokenButton() {
     setIsRefreshing(true)
 
     try {
-      const url = `/api/auth/refresh`;
-      // const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`;
-      const refreshToken = session.refreshToken;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`;
+      const refreshToken = session.user.refreshToken;
 
       const response = await fetch(url, {
         method: 'POST',

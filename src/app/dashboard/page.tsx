@@ -16,18 +16,14 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  {
-    console.log(`🦊 session`, JSON.stringify(session));
-  }
-
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-6 w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Welcome to your dashboard</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>User Profile</CardTitle>
@@ -65,9 +61,9 @@ export default async function DashboardPage() {
             </div>
             <RefreshTokenButton />
             {
-              session && <>{
-                JSON.stringify(session, null, 2)
-              }</>
+              session && <div className="overflow-auto max-h-60">
+                <pre className="text-xs">{JSON.stringify(session, null, 2)}</pre>
+              </div>
             }
           </CardContent>
         </Card>
