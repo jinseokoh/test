@@ -1,13 +1,12 @@
-import { RefreshTokenButton } from '@/components/refresh-token-button'
+import { auth } from '@/auth';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { redirect } from 'next/navigation'
-import { auth } from '../../auth'
+} from '@/components/ui/card';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -54,17 +53,12 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Access Token Expires:</span>
-                <span className="font-medium">{new Date(session.accessTokenExpires ?? '').toLocaleTimeString()}</span>
-              </div>
-            </div>
-            <RefreshTokenButton />
             {
               session && <div className="overflow-auto max-h-60">
                 <pre className="text-xs">{JSON.stringify(session, null, 2)}</pre>
               </div>
             }
+            </div>
           </CardContent>
         </Card>
       </div>

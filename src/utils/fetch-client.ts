@@ -1,135 +1,66 @@
-// utils/fetchClient.ts
+// lib/fetchClient.ts
+import { auth } from '@/auth';
+import { signOut as clientSignOut } from 'next-auth/react';
 
-import { auth, signOut } from '@/auth'
-import { jwtDecode } from 'jwt-decode'
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-interface DecodedToken {
-  exp?: number
-  [key: string]: unknown
-}
-
-// 전역 Promise 캐시
-let refreshPromise: Promise<any> | null = null
-
-// Helper function to extract expiration
-function getTokenExpiration(token: string): number | undefined {
-  try {
-    const decodedToken = jwtDecode<DecodedToken>(token)
-    return decodedToken?.exp ? Number(decodedToken.exp) * 1000 : undefined
-  } catch (error) {
-    console.error('Error decoding token:', error)
-    return undefined
-  }
-}
-
-// Refresh access token
-async function refreshAccessToken(refreshToken: string): Promise<{
-  accessToken: string
-  refreshToken: string
-  accessTokenExpires: number | undefined
-}> {
-  if (refreshPromise) {
-    console.log('Waiting for existing refresh promise...')
-    return refreshPromise
-  }
-
-  try {
-    console.log('Refreshing token with refreshToken:', refreshToken)
-    refreshPromise = fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
-      method: 'POST',
-      body: null,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${refreshToken}`,
-      },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(
-            `Refresh token request failed: ${await response.text()}`
-          )
-        }
-
-        const data = await response.json()
-        const result = data?.result
-
-        if (!result?.accessToken) {
-          throw new Error('No accessToken in refresh response')
-        }
-
-        const accessTokenExpires = getTokenExpiration(result.accessToken)
-        console.log('Refreshed Decoded Token:', jwtDecode(result.accessToken))
-        console.log(
-          'Refreshed Expiration Duration (seconds):',
-          accessTokenExpires ? (accessTokenExpires - Date.now()) / 1000 : 'N/A'
-        )
-
-        return {
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken ?? refreshToken,
-          accessTokenExpires,
-        }
-      })
-      .finally(() => {
-        refreshPromise = null
-      })
-
-    return await refreshPromise
-  } catch (error) {
-    console.error('RefreshAccessTokenError:', error)
-    refreshPromise = null
-    throw error
-  }
-}
-
-export const fetchClient = async (
+export async function fetchClient(
   url: string,
   options: RequestInit = {},
-  retryCount = 0
-): Promise<Response> => {
-  const MAX_RETRIES = 1 // 최대 재시도 횟수
-  const session = await auth()
+  session?: { accessToken?: string; refreshToken?: string } | null
+): Promise<Response> {
+  // 서버 환경에서 세션 얻기
+  const currentSession =
+    session || (typeof window === 'undefined' ? await auth() : null)
 
-  if (!session || !session.accessToken) {
-    console.log('No session or accessToken, proceeding without Authorization')
-    return fetch(url, options)
+  // accessToken이 없으면 그냥 요청
+  if (!currentSession?.accessToken) {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        'Cache-Control': 'no-cache',
+      },
+    })
   }
 
-  console.log(`From the fetchClient ${session.accessToken}`)
-
-  const fetchOptions = {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${session.accessToken}`,
-      'Cache-Control': 'no-cache',
-    },
+  const makeAuthorizedRequest = (accessToken: string) => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${accessToken}`,
+        'Cache-Control': 'no-cache',
+      },
+    })
   }
 
-  const response = await fetch(url, fetchOptions)
+  let response = await makeAuthorizedRequest(currentSession.accessToken)
 
-  // 401 에러 처리
-  if (response.status === 401 && retryCount < MAX_RETRIES) {
-    console.log('401 Unauthorized, attempting to refresh token...')
+  // 토큰 만료된 경우
+  if (response.status === 401 && currentSession.refreshToken) {
     try {
-      const newTokens = await refreshAccessToken(session.refreshToken)
-
-      // 새 세션 정보로 요청 재시도
-      const newFetchOptions = {
-        ...options,
+      const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
         headers: {
-          ...options.headers,
-          Authorization: `Bearer ${newTokens.accessToken}`,
-          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentSession.refreshToken}`,
         },
-      }
+      })
 
-      console.log(`Retrying with new accessToken: ${newTokens.accessToken}`)
-      return fetchClient(url, newFetchOptions, retryCount + 1)
+      if (!refreshResponse.ok) throw new Error('Failed to refresh token')
+      const refreshData = await refreshResponse.json()
+      const newAccessToken = refreshData?.result?.accessToken
+
+      if (!newAccessToken) throw new Error('No access token received')
+
+      // 새로운 토큰으로 다시 요청
+      response = await makeAuthorizedRequest(newAccessToken)
     } catch (error) {
-      console.error('Failed to refresh token:', error)
-      await signOut({ redirect: false })
-      throw new Error('Session expired, please log in again')
+      if (typeof window !== 'undefined') {
+        await clientSignOut({ redirect: true, callbackUrl: '/login' })
+      }
+      throw new Error('세션이 만료되었습니다. 다시 로그인 해주세요.')
     }
   }
 

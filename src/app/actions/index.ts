@@ -53,3 +53,6 @@ export const setCookies = async (authCookies: string[] | undefined) => {
     })
   }
 }
+
+export * from './register'
+

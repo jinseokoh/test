@@ -1,22 +1,15 @@
 import { z } from 'zod'
 
-export const registerSchema = z.object({
-  email: z.string().email({ message: '유효한 이메일 주소가 아닙니다.' }),
-  password: z
+export const registerFormSchema = z.object({
+  username: z.string().min(3, "아이디는 최소 3글자 이상이어야 합니다"),
+  password: z.string().min(6, "비밀번호는 최소 6글자 이상이어야 합니다"),
+  phone: z
     .string()
-    .regex(
-      /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,24}$/,
-      '영문, 숫자, 특수문자를 포함히여 8자 이상 입력하세요.'
-    ),
-  pin: z
-    .string()
-    .length(8, '010을 제외한 나머지 전화번호를 입력하세요.')
-    .nullable(),
-  code: z
-    .string()
-    .length(4, '한글 4음절로 된 초대코드를 입력하세요.')
-    .nullable(),
-  // remember: z.boolean(),
+    .regex(/^[0-9]{10,11}$/, "올바른 전화번호 형식이 아닙니다 (10-11자리 숫자)")
+    .optional(),
+  role: z.enum(["INSTRUCTOR", "PARENT", "MANAGER"], {
+    required_error: "역할을 선택해주세요",
+  }),
 })
 
-export type RegisterFormData = z.infer<typeof registerSchema>
+export type RegisterFormData = z.infer<typeof registerFormSchema>

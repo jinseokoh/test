@@ -1,28 +1,36 @@
-"use client"
+// components/Header.tsx
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { LogIn, LogOut } from "lucide-react"
-import { signOut, useSession } from "next-auth/react"
-import Link from "next/link"
+import { Button } from "@/components/ui/button";
+import { fetchClient } from "@/utils/fetch-client";
+import { LogIn, LogOut } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 
 export default function Header() {
-  const { data: session, status } = useSession()
-  const isLoading = status === "loading"
+  const { data: session, status } = useSession();
+  const isLoading = status === "loading";
 
   const handleLogout = async () => {
     try {
-      // Call our API route to handle server-side logout
       const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/logout`;
-      await fetch(url, {
+      const res = await fetchClient(url, {
         method: "POST",
-      })
+        body: null,
+        headers: { "Content-Type": "application/json" },
+      }, session);
 
-      // Then sign out from next-auth
-      await signOut({ callbackUrl: "/login" })
+      if (!res.ok) {
+        throw new Error(`Logout failed: ${await res.text()}`);
+      }
+
+      console.log("Logout success");
+      await signOut({ redirectTo: "/login" });
     } catch (error) {
-      console.error("Error logging out:", error)
+      console.error("Error logging out:", error);
+      await signOut({ redirectTo: "/login" });
     }
-  }
+  };
 
   return (
     <header className="border-b">
@@ -66,5 +74,5 @@ export default function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }

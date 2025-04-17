@@ -1,11 +1,10 @@
 // app/auth.ts
 
-import { jwtDecode } from 'jwt-decode'
-import type { User } from 'next-auth'
-import NextAuth from 'next-auth'
-import type { JWT } from 'next-auth/jwt'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import { authConfig } from './auth.config'
+import { jwtDecode } from 'jwt-decode';
+import NextAuth, { Session, User } from 'next-auth';
+import { JWT } from 'next-auth/jwt';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { authConfig } from './auth.config';
 
 interface DecodedToken {
   exp?: number
@@ -136,25 +135,25 @@ export const {
     }),
   ],
   callbacks: {
-    jwt: async ({ token, user }) => {
+    jwt: async ({ token, user }: { token: JWT, user: User }): Promise<JWT> => {
       console.log(`🟢 NextAuth jwt 콜백 - token: ${JSON.stringify(token)}`)
 
       // 사용자의 첫 로그인
       if (user) {
         console.log(`🟢 NextAuth jwt 콜백 - user: ${JSON.stringify(user)}`)
 
-        const updatedToken = {
+        const updatedToken: JWT = {
           ...token,
           accessToken: user.accessToken,
           refreshToken: user.refreshToken,
           role: user.role,
-          id: user.id,
+          id: user.id || '1',
           name: user.username,
           username: user.username,
           phone: user.phone,
           image: user.image,
           accessTokenExpires: user.accessTokenExpires,
-        } as JWT
+        };
         console.log(
           `🟢 NextAuth jwt 콜백 - returns ${JSON.stringify(updatedToken)}`
         )
@@ -163,10 +162,13 @@ export const {
 
       // Return existing token (refresh is handled in fetchClient)
       console.log(`🟢 기존 token 또는 fetchClient 가 갱신한 token`, token)
-      return token;
+      return token
     },
-    session: async ({ session, token }) => {
-      console.log(`🟡 NextAuth session 콜백 - session:`, JSON.stringify(session))
+    session: async ({ session, token }: { session: Session, token: JWT }) => {
+      console.log(
+        `🟡 NextAuth session 콜백 - session:`,
+        JSON.stringify(session)
+      )
       console.log(`🟡 NextAuth session 콜백 - token:`, JSON.stringify(token))
       if (token) {
         session.accessToken = token.accessToken
@@ -180,16 +182,16 @@ export const {
           username: token.username ?? '',
           name: token.name ?? null,
           image: token.image ?? null,
-          email: token.email ?? '', // 👈 추가 (없으면 오류 발생해서)
-          emailVerified: null, // 👈 추가
-          accessToken: token.accessToken ?? '', // 👈 추가
-          refreshToken: token.refreshToken ?? '', // 👈 추가
+          // email: token.email ?? '', // 👈 추가 (없으면 오류 발생해서)
+          // emailVerified: null, // 👈 추가
+          //accessToken: token.accessToken ?? '', // 👈 추가
+          //refreshToken: token.refreshToken ?? '', // 👈 추가
         }
       }
-        console.log(
-          `🟡 NextAuth session 콜백 - 최종 session:`,
-          JSON.stringify(session)
-        )
+      console.log(
+        `🟡 NextAuth session 콜백 - 최종 session:`,
+        JSON.stringify(session)
+      )
       return session
     },
   },
