@@ -1,4 +1,5 @@
-// app/api/auth/[...nextauth]/auth.ts
+// app/auth.ts
+
 import { jwtDecode } from 'jwt-decode'
 import type { User } from 'next-auth'
 import NextAuth from 'next-auth'
@@ -22,41 +23,41 @@ function getTokenExpiration(token: string): number | undefined {
   }
 }
 
-async function refreshAccessToken(token: JWT): Promise<JWT> {
-  try {
-    console.log('🟠 Refreshing token with refreshToken:', token.refreshToken)
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`
-    const res = await fetch(url, {
-      method: 'POST',
-      body: null,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token.refreshToken}`,
-      },
-    })
-    if (!res.ok) {
-      throw new Error('refresh API failed')
-    }
-    const data = await res.json()
-    const result = data?.result;
+// async function refreshAccessToken(token: JWT): Promise<JWT> {
+//   try {
+//     console.log('🟠 Refreshing token with refreshToken:', token.refreshToken)
+//     const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`
+//     const res = await fetch(url, {
+//       method: 'POST',
+//       body: null,
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${token.refreshToken}`,
+//       },
+//     })
+//     if (!res.ok) {
+//       throw new Error('refresh API failed')
+//     }
+//     const data = await res.json()
+//     const result = data?.result;
 
-    const accessTokenExpires = getTokenExpiration(result.accessToken)
+//     const accessTokenExpires = getTokenExpiration(result.accessToken)
 
-    return {
-      ...token,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken ?? token.refreshToken,
-      accessTokenExpires,
-      error: undefined,
-    }
-  } catch (error) {
-    console.error('RefreshAccessTokenError:', error)
-    return {
-      ...token,
-      error: 'RefreshAccessTokenError',
-    }
-  }
-}
+//     return {
+//       ...token,
+//       accessToken: result.accessToken,
+//       refreshToken: result.refreshToken ?? token.refreshToken,
+//       accessTokenExpires,
+//       error: undefined,
+//     }
+//   } catch (error) {
+//     console.error('RefreshAccessTokenError:', error)
+//     return {
+//       ...token,
+//       error: 'RefreshAccessTokenError',
+//     }
+//   }
+// }
 
 export const {
   handlers: { GET, POST },
@@ -83,21 +84,19 @@ export const {
         }
 
         try {
-          const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
-          const res = await fetch(
-            url,
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                username: credentials.username,
-                password: credentials.password,
-                role: credentials.role,
-              }),
-              headers: { 'Content-Type': 'application/json' },
-            }
-          )
+          const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`
+          const res = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify({
+              username: credentials.username,
+              password: credentials.password,
+              role: credentials.role,
+            }),
+            headers: { 'Content-Type': 'application/json' },
+          })
 
           if (!res.ok) {
+            console.error('Login failed:', await res.json())
             return null
           }
 
@@ -105,15 +104,18 @@ export const {
           const result = data?.result
 
           if (!result?.accessToken) {
+            console.error('No accessToken in response')
             return null
           }
 
-          console.log(`💋 `, JSON.stringify(result.accessToken, result.refreshToken))
+          console.log(
+            `💋 AccessToken: ${result.accessToken}, RefreshToken: ${result.refreshToken}`
+          )
           // Parse the expiration time from the token
           const accessTokenExpires = getTokenExpiration(result.accessToken)
 
           const user: User = {
-            id: String(result?.user?.id), // Ensure id is a number
+            id: String(result?.user?.id),
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,
             role: result.role || credentials.role,
@@ -127,7 +129,7 @@ export const {
 
           return user
         } catch (e) {
-          console.error(e)
+          console.error('Authorize error:', e)
           return null
         }
       },
@@ -135,16 +137,11 @@ export const {
   ],
   callbacks: {
     jwt: async ({ token, user }) => {
-      console.log(`🟢 jwt callback - Token is ${JSON.stringify(token)}`)
-      let accessTokenExpires: number | undefined
+      console.log(`🟢 NextAuth jwt 콜백 - token: ${JSON.stringify(token)}`)
 
-      // 처음 로그인하는 경우 token을 내가 원하는 형태로 수정
+      // 사용자의 첫 로그인
       if (user) {
-        console.log(`🟢 jwt callback - User is ${JSON.stringify(user)}`)
-
-        if (user.accessToken) {
-          accessTokenExpires = getTokenExpiration(user.accessToken)
-        }
+        console.log(`🟢 NextAuth jwt 콜백 - user: ${JSON.stringify(user)}`)
 
         const updatedToken = {
           ...token,
@@ -156,28 +153,24 @@ export const {
           username: user.username,
           phone: user.phone,
           image: user.image,
-          accessTokenExpires: accessTokenExpires,
+          accessTokenExpires: user.accessTokenExpires,
         } as JWT
-        console.log(`🟢 jwt callback returns ${JSON.stringify(updatedToken)}`)
+        console.log(
+          `🟢 NextAuth jwt 콜백 - returns ${JSON.stringify(updatedToken)}`
+        )
         return updatedToken
       }
 
-      // 토큰이 만료되었는지 확인
-      if (
-        token.accessTokenExpires && Date.now() < Number(token.accessTokenExpires)
-      ) {
-        console.log(`🟢 accessToken is not expired`, token)
-        return token;
-      }
-      console.log(`🔴 accessToken is expired`, token)
-      return refreshAccessToken(token)
+      // Return existing token (refresh is handled in fetchClient)
+      console.log(`🟢 기존 token 또는 fetchClient 가 갱신한 token`, token)
+      return token;
     },
     session: async ({ session, token }) => {
-
-      console.log(`🟡 session`, JSON.stringify(session))
-      console.log(`🟡 token`, JSON.stringify(token))
+      console.log(`🟡 NextAuth session 콜백 - session:`, JSON.stringify(session))
+      console.log(`🟡 NextAuth session 콜백 - token:`, JSON.stringify(token))
       if (token) {
         session.accessToken = token.accessToken
+        session.refreshToken = token.refreshToken
         session.accessTokenExpires = token.accessTokenExpires
         session.error = token.error
         session.user = {
@@ -187,13 +180,16 @@ export const {
           username: token.username ?? '',
           name: token.name ?? null,
           image: token.image ?? null,
-          email: token.email ?? '', // 👈 추가
+          email: token.email ?? '', // 👈 추가 (없으면 오류 발생해서)
           emailVerified: null, // 👈 추가
           accessToken: token.accessToken ?? '', // 👈 추가
           refreshToken: token.refreshToken ?? '', // 👈 추가
         }
-        console.log(`🟡 session`, JSON.stringify(session))
       }
+        console.log(
+          `🟡 NextAuth session 콜백 - 최종 session:`,
+          JSON.stringify(session)
+        )
       return session
     },
   },

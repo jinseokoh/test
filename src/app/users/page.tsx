@@ -1,9 +1,7 @@
-import { auth } from "@/auth";
 import { fetchClient } from "@/utils/fetch-client";
 import { redirect } from "next/navigation";
 
 const UserPage = async () => {
-  const session = await auth()
   console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
   console.log("🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢session:", session);
   const res = await fetchClient(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
