@@ -22,41 +22,11 @@ function getTokenExpiration(token: string): number | undefined {
   }
 }
 
-// async function refreshAccessToken(token: JWT): Promise<JWT> {
-//   try {
-//     console.log('🟠 Refreshing token with refreshToken:', token.refreshToken)
-//     const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`
-//     const res = await fetch(url, {
-//       method: 'POST',
-//       body: null,
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${token.refreshToken}`,
-//       },
-//     })
-//     if (!res.ok) {
-//       throw new Error('refresh API failed')
-//     }
-//     const data = await res.json()
-//     const result = data?.result;
-
-//     const accessTokenExpires = getTokenExpiration(result.accessToken)
-
-//     return {
-//       ...token,
-//       accessToken: result.accessToken,
-//       refreshToken: result.refreshToken ?? token.refreshToken,
-//       accessTokenExpires,
-//       error: undefined,
-//     }
-//   } catch (error) {
-//     console.error('RefreshAccessTokenError:', error)
-//     return {
-//       ...token,
-//       error: 'RefreshAccessTokenError',
-//     }
-//   }
-// }
+// Helper function to check if a token is expired
+function isTokenExpired(expirationTime?: number): boolean {
+  if (!expirationTime) return true;
+  return Date.now() > expirationTime;
+}
 
 export const {
   handlers: { GET, POST },
@@ -153,11 +123,32 @@ export const {
           phone: user.phone,
           image: user.image,
           accessTokenExpires: user.accessTokenExpires,
-        };
+        }
         console.log(
           `🟢 NextAuth jwt 콜백 - returns ${JSON.stringify(updatedToken)}`
         )
         return updatedToken
+      }
+
+      // 😀 서버에서 Token이 만료되었는지 체크하는 가장 적합한 위치
+      if (isTokenExpired(token.accessTokenExpires)) {
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token.refreshToken}`,
+              },
+            }
+          )
+
+          const data = await res.json()
+          token.accessToken = data.result.accessToken
+        } catch (err) {
+          console.error('Token refresh failed', err)
+        }
       }
 
       // Return existing token (refresh is handled in fetchClient)
