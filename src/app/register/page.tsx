@@ -1,12 +1,12 @@
-import { auth } from "@/auth"
-import { RegisterForm } from "@/components/register-form"
-import { redirect } from "next/navigation"
+import { RegisterForm } from "@/components/register-form";
+import { verifySession } from "@/utils/auth";
+import { redirect } from "next/navigation";
 
 export default async function RegisterPage() {
-  const session = await auth()
+  const session = await verifySession();
 
-  if (session) {
-    redirect("/dashboard")
+  if (session.user) {
+    redirect("/dashboard");
   }
 
   return (

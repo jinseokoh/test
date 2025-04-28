@@ -1,10 +1,10 @@
-import { auth } from '@/auth';
+import { verifySession } from '@/app/actions/session';
 import { redirect } from 'next/navigation';
 
 export default async function Home() {
-  const session = await auth();
+  const session = await verifySession();
 
-  if (!session) {
+  if (!session.user) {
     redirect("/login")
   }
 

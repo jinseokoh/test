@@ -4,18 +4,19 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useSession } from "@/providers/session-provider"
 import { LoginFormData, loginFormSchema } from "@/schemas/login-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { toast } from "sonner"
 
 export function LoginForm() {
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const router = useRouter();
+  const { refreshSession } = useSession();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginFormSchema),
@@ -27,32 +28,48 @@ export function LoginForm() {
   })
 
   async function onSubmit(formData: LoginFormData) {
-    setIsLoading(true)
+    setFormError(null);
+    setIsLoading(true);
+    console.log('login form data', formData);
+    
     try {
-      // Use NextAuth's signIn directly for better error handling
-      const result = await signIn("credentials", {
-        username: formData.username,
-        password: formData.password,
-        role: formData.role,
-        redirect: false,
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include',
       });
 
-      if (result?.error) {
-        toast.error("로그인 오류", {
-          description: "아이디 또는 비밀번호를 확인하세요",
-        });
-        return;
+      console.log("Login response status:", response.status);
+      
+      if (response.ok) {
+        const responseData = await response.json();
+        const { accessToken, refreshToken, user } = responseData;
+        
+        console.log(`🟣🟣🟣 원격API 로그인 성공`, accessToken, refreshToken, user);
+        
+        // Refresh the session context with the latest user data
+        await refreshSession();
+        
+        // Redirect to dashboard
+        console.log("Redirecting to dashboard...");
+        router.push('/dashboard');
+      } else {
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.log("Login failed. Error data:", errorData);
+        } catch {
+          console.log("Failed to parse error response");
+          errorData = { message: '로그인에 실패했습니다.' };
+        }
+        setFormError(errorData.message || '로그인에 실패했습니다.');
       }
-
-      // Success - redirect to dashboard
-      router.push("/dashboard");
-      router.refresh();
     } catch (error: unknown) {
-      toast.error("로그인 오류", {
-        description: error instanceof Error ? error.message : "나중에 다시 시도해주세요",
-      })
+      console.log("Login error:", error);
+      setFormError(error instanceof Error ? error.message : '로그인 중 오류가 발생했습니다.');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -60,6 +77,9 @@ export function LoginForm() {
     <div className="grid gap-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {formError && (
+            <div className="text-red-500 text-sm font-medium">{formError}</div>
+          )}
           <FormField
             control={form.control}
             name="username"

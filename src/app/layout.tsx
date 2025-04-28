@@ -1,14 +1,13 @@
+import { verifySession } from "@/app/actions/session";
+import { SessionProvider } from "@/providers/session-provider";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import React from 'react';
 import { Toaster } from "sonner";
-import { auth } from "../auth";
 import Header from "../components/header";
 import { cn } from "../lib/utils";
 import { NavigationProvider } from "../providers/navigation-provider";
-import NextAuthSessionProvider from "../providers/next-auth-session-provider";
-import ReactQueryProvider from "../providers/react-query-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -70,7 +69,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  const session = await verifySession();
 
   return (
     <html
@@ -103,19 +102,17 @@ export default async function RootLayout({
         className={cn(inter.className, 'antialiased')}
       >
         <ThemeProvider attribute="class" defaultTheme="light">
-          <NextAuthSessionProvider session={session}>
-            <ReactQueryProvider>
-              <NavigationProvider>
-                <div className="relative">
-                  <div className="w-full mx-auto flex flex-col">
-                    <Header />
-                    <main className="min-h-screen container py-8">{children}</main>
-                  </div>
+          <SessionProvider session={session}>
+            <NavigationProvider>
+              <div className="relative">
+                <div className="w-full mx-auto flex flex-col">
+                  <Header />
+                  <main className="min-h-screen container py-8">{children}</main>
                 </div>
-                <Toaster position="top-right" />
-              </NavigationProvider>
-            </ReactQueryProvider>
-          </NextAuthSessionProvider>
+              </div>
+              <Toaster position="top-right" />
+            </NavigationProvider>
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

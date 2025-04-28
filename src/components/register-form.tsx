@@ -1,6 +1,5 @@
 "use client"
 
-import { registerUser } from "@/app/actions/register"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -29,19 +28,25 @@ export function RegisterForm() {
 
   const watchRole = form.watch("role")
 
-  async function onSubmit(values: RegisterFormData) {
+  async function onSubmit(formData: RegisterFormData) {
     setIsLoading(true)
 
     try {
-      // 서버 액션을 통한 회원가입 요청
-      const result = await registerUser(values)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include',
+      });
 
-      if (!result.success) {
-        toast.error("회원가입 실패", {
-          description: result.message || "회원가입에 실패했습니다",
-        })
+      if (!response.ok) {
         return
       }
+
+      const responseData = await response.json();
+      const { accessToken, refreshToken, user } = responseData;
+
+      console.log(`🟣🟣🟣 원격API 로그인 성공`, accessToken, refreshToken, user);
 
       // 회원가입 성공 메시지
       toast.success("회원가입 성공", {

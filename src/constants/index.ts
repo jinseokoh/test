@@ -11,3 +11,6 @@ export const DEFAULT_PAGE = 1
 
 export const INCREASE = 'increase' as const
 export const DECREASE = 'decrease' as const
+
+export const ACCESS_TOKEN_KEY = 'accessToken'
+export const REFRESH_TOKEN_KEY = 'refreshToken'
